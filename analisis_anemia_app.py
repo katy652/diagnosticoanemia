@@ -20,6 +20,7 @@ st.set_page_config(page_title="Análisis de Anemias", layout="wide")
 @st.cache_data
 def load_data():
     # Cargar los datos
+    # AHORA ESTÁ ASUMIENDO QUE 'diagnostico.csv' ESTÁ EN EL MISMO DIRECTORIO DEL REPOSITORIO
     data = pd.read_csv("diagnostico.csv")
     
     # Limpieza básica de datos
@@ -45,7 +46,7 @@ st.title('Análisis de Datos de Clasificación de Tipos de Anemia')
 st.sidebar.title("Opciones de Análisis")
 analysis_option = st.sidebar.selectbox(
     "Seleccione el tipo de análisis:",
-    ["Exploración de Datos", "Análisis Estadístico", "Modelado Predictivo", "Visualización Avanzada", "Recomendaciones"] # NUEVA OPCIÓN
+    ["Exploración de Datos", "Análisis Estadístico", "Modelado Predictivo", "Visualización Avanzada", "Recomendaciones"] # AÑADIDO "Recomendaciones"
 )
 
 # Función para mostrar información básica del dataset
@@ -128,21 +129,19 @@ def statistical_analysis():
     numeric_cols = data.select_dtypes(include=[np.number]).columns
     selected_var_stat = st.selectbox("Seleccione variable para análisis:", numeric_cols[:-1], key='stat_var') 
     
-    # **********************************************
-    # NUEVAS ADICIONES: Estadísticas Descriptivas por Diagnóstico
+    # Estadísticas Descriptivas por Diagnóstico
     st.write("### Estadísticas Descriptivas por Diagnóstico")
     if selected_var_stat:
         desc_stats = data.groupby('Diagnosis')[selected_var_stat].describe()
         st.write(desc_stats)
 
-    # NUEVAS ADICIONES: Violin Plots
+    # Violin Plots
     st.write("### Violin Plots por Diagnóstico")
     if selected_var_stat:
         fig_violin = px.violin(data, x='Diagnosis', y=selected_var_stat, color='Diagnosis', box=True, 
                                labels={'x': 'Diagnóstico', 'y': f'Valor de {selected_var_stat}'},
                                title=f'Distribución de {selected_var_stat} por Tipo de Anemia (Violin Plot)')
         st.plotly_chart(fig_violin, use_container_width=True)
-    # **********************************************
 
     # Análisis ANOVA
     st.write("### Análisis de Varianza (ANOVA)")
@@ -299,7 +298,6 @@ def advanced_visualization():
                    aspect="auto")
     st.plotly_chart(fig, use_container_width=True)
 
-# **********************************************
 # NUEVA FUNCIÓN: Recomendaciones
 def recommendations():
     st.subheader("Recomendaciones Basadas en el Diagnóstico")
@@ -310,7 +308,7 @@ def recommendations():
     
     selected_diagnosis = st.selectbox(
         "Seleccione un diagnóstico:",
-        ['Seleccione uno...'] + diagnosis_types, # Añadir una opción inicial
+        ['Seleccione uno...'] + diagnosis_types, 
         key='recommendation_diagnosis_selector'
     )
 
@@ -353,8 +351,15 @@ def recommendations():
         - **Medicamentos:** Pueden incluir corticosteroides o inmunosupresores.
         - **Transfusiones:** Podrían ser necesarias en casos severos.
         - **Evitar desencadenantes:** Si es causada por medicamentos o exposiciones, identificarlas y evitarlas.
+        """,
+        'Normocytic normochromic anemia': """
+        **Recomendaciones:**
+        - **Consulta médica:** Este tipo de anemia puede tener muchas causas subyacentes (enfermedad crónica, pérdida aguda de sangre, enfermedad renal, etc.). Es esencial una evaluación médica para identificar la causa.
+        - **Diagnóstico adicional:** Puede requerir pruebas adicionales para determinar la etiología, como pruebas de función renal o tiroidea, estudios de médula ósea o pruebas de inflamación.
+        - **Tratamiento de la causa subyacente:** El tratamiento se centrará en la condición que está causando la anemia.
+        - **Manejo de síntomas:** El médico puede sugerir tratamientos para aliviar síntomas como fatiga.
         """
-        # Puedes añadir más diagnósticos y sus recomendaciones aquí
+        # Asegúrate de que los nombres de los diagnósticos aquí coincidan EXACTAMENTE con los de tu columna 'Diagnosis'
     }
 
     if selected_diagnosis != 'Seleccione uno...':
@@ -364,9 +369,6 @@ def recommendations():
             st.warning(f"No hay recomendaciones específicas disponibles para '{selected_diagnosis}' en este momento. Por favor, consulta a un profesional de la salud.")
     else:
         st.info("Por favor, selecciona un tipo de diagnóstico del menú desplegable para ver las recomendaciones.")
-
-# **********************************************
-
 
 # Mostrar el análisis seleccionado
 if analysis_option == "Exploración de Datos":
@@ -378,7 +380,7 @@ elif analysis_option == "Modelado Predictivo":
     predictive_modeling()
 elif analysis_option == "Visualización Avanzada":
     advanced_visualization()
-elif analysis_option == "Recomendaciones": # NUEVA CONDICIÓN
+elif analysis_option == "Recomendaciones": # AÑADIDA NUEVA CONDICIÓN
     recommendations() # LLAMADA A LA NUEVA FUNCIÓN
 
 # Notas al pie
