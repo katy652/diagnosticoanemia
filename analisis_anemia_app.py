@@ -311,6 +311,7 @@ def recommendations():
 
     # Obtener los nombres de los diagnósticos únicos del dataset
     diagnosis_types = sorted(data['Diagnosis'].unique().tolist())
+    st.write(f"**Diagnósticos disponibles:** {diagnosis_types}")
     
     selected_diagnosis = st.selectbox(
         "Seleccione un diagnóstico:",
