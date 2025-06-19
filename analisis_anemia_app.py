@@ -100,9 +100,9 @@ def exploratory_analysis():
         
         # Boxplots por diagnóstico
         st.write("### Boxplots por Diagnóstico")
-        selected_var = st.selectbox("Seleccione variable para boxplot:", selected_vars)
-        fig = px.box(data, x='Diagnosis', y=selected_var, 
-                     title=f'Distribución de {selected_var} por Diagnóstico')
+        selected_var_boxplot = st.selectbox("Seleccione variable para boxplot:", selected_vars, key='boxplot_var') # Added key
+        fig = px.box(data, x='Diagnosis', y=selected_var_boxplot, 
+                     title=f'Distribución de {selected_var_boxplot} por Diagnóstico')
         st.plotly_chart(fig, use_container_width=True)
     
     # Matriz de correlación
@@ -126,11 +126,26 @@ def statistical_analysis():
     
     # Selección de variable para análisis
     numeric_cols = data.select_dtypes(include=[np.number]).columns
-    selected_var = st.selectbox("Seleccione variable para análisis:", numeric_cols[:-1])  # Excluyendo Diagnosis_encoded
+    selected_var_stat = st.selectbox("Seleccione variable para análisis:", numeric_cols[:-1], key='stat_var') # Added key
     
+    # Nuevas adiciones: Estadísticas Descriptivas por Diagnóstico
+    st.write("### Estadísticas Descriptivas por Diagnóstico")
+    if selected_var_stat:
+        desc_stats = data.groupby('Diagnosis')[selected_var_stat].describe()
+        st.write(desc_stats)
+
+    # Nuevas adiciones: Violin Plots
+    st.write("### Violin Plots por Diagnóstico")
+    if selected_var_stat:
+        fig_violin = px.violin(data, x='Diagnosis', y=selected_var_stat, color='Diagnosis', box=True, # Muestra el boxplot dentro
+                               labels={'x': 'Diagnóstico', 'y': f'Valor de {selected_var_stat}'},
+                               title=f'Distribución de {selected_var_stat} por Tipo de Anemia (Violin Plot)')
+        st.plotly_chart(fig_violin, use_container_width=True)
+
+
     # Análisis ANOVA
     st.write("### Análisis de Varianza (ANOVA)")
-    groups = [data[data['Diagnosis'] == diagnosis][selected_var] 
+    groups = [data[data['Diagnosis'] == diagnosis][selected_var_stat] # Changed to selected_var_stat
               for diagnosis in data['Diagnosis'].unique()]
     
     f_val, p_val = stats.f_oneway(*groups)
@@ -142,7 +157,7 @@ def statistical_analysis():
         
         # Post-hoc test (Tukey HSD)
         st.write("### Prueba Post-Hoc (Tukey HSD)")
-        tukey = pairwise_tukeyhsd(endog=data[selected_var],
+        tukey = pairwise_tukeyhsd(endog=data[selected_var_stat], # Changed to selected_var_stat
                                  groups=data['Diagnosis'],
                                  alpha=0.05)
         st.text(tukey.summary())
@@ -155,12 +170,13 @@ def statistical_analysis():
         "Seleccione pares de diagnósticos para comparar:",
         [(a, b) for i, a in enumerate(data['Diagnosis'].unique()) 
          for b in list(data['Diagnosis'].unique())[i+1:]],
-        format_func=lambda x: f"{x[0]} vs {x[1]}"
+        format_func=lambda x: f"{x[0]} vs {x[1]}",
+        key='ttest_pairs' # Added key
     )
     
     for pair in diagnosis_pairs:
-        group1 = data[data['Diagnosis'] == pair[0]][selected_var]
-        group2 = data[data['Diagnosis'] == pair[1]][selected_var]
+        group1 = data[data['Diagnosis'] == pair[0]][selected_var_stat] # Changed to selected_var_stat
+        group2 = data[data['Diagnosis'] == pair[1]][selected_var_stat] # Changed to selected_var_stat
         
         t_val, p_val = stats.ttest_ind(group1, group2, equal_var=False)
         
@@ -261,7 +277,8 @@ def advanced_visualization():
         "Seleccione hasta 5 variables para pair plot:",
         features,
         default=['HGB', 'RBC', 'MCV', 'MCH'],
-        max_selections=5
+        max_selections=5,
+        key='pairplot_vars' # Added key
     )
     
     if selected_vars:
