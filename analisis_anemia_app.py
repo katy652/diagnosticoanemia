@@ -363,10 +363,18 @@ def recommendations():
         - **Diagnóstico adicional:** Puede requerir pruebas adicionales para determinar la etiología, como pruebas de función renal o tiroidea, estudios de médula ósea o pruebas de inflamación.
         - **Tratamiento de la causa subyacente:** El tratamiento se centrará en la condición que está causando la anemia.
         - **Manejo de síntomas:** El médico puede sugerir tratamientos para aliviar síntomas como fatiga.
+        """,
+        'Leukemia': """
+        **Recomendaciones (Leucemia):**
+        - **Urgencia Médica y Especialista:** El diagnóstico de leucemia requiere atención médica URGENTE y especializada por un hematólogo oncólogo. No es algo que deba manejarse con recomendaciones generales de dieta o estilo de vida sin supervisión médica intensiva.
+        - **Confirmación Diagnóstica:** Se requerirán pruebas adicionales (biopsia de médula ósea, análisis genéticos) para confirmar el tipo específico de leucemia y su estadio.
+        - **Plan de Tratamiento:** El tratamiento variará enormemente según el tipo de leucemia (aguda/crónica, mieloide/linfoide), la edad del paciente y otros factores. Puede incluir quimioterapia, radioterapia, terapia dirigida, inmunoterapia o trasplante de células madre.
+        - **Manejo de Complicaciones:** Es fundamental el manejo de las complicaciones (infecciones, hemorragias, anemia severa) que son comunes durante el tratamiento.
+        - **Apoyo Psicológico:** Un diagnóstico de leucemia es devastador. El apoyo psicológico para el paciente y la familia es crucial.
+        - **Seguimiento Continuo:** Requiere seguimiento médico constante y de por vida.
+        **¡Advertencia Importante!** Esta aplicación NO es un sustituto del consejo médico profesional. Las recomendaciones para la leucemia son extremadamente complejas y deben ser proporcionadas ÚNICAMENTE por profesionales de la salud cualificados.
         """
-        # Asegúrate de que los nombres de los diagnósticos aquí coincidan EXACTAMENTE con los valores de tu columna 'Diagnosis' en el CSV.
-        # Por favor, valida y personaliza estas recomendaciones con información médica precisa.
-    }
+           }
 
     if selected_diagnosis != 'Seleccione uno...':
         if selected_diagnosis in all_recommendations:
@@ -376,7 +384,7 @@ def recommendations():
     else:
         st.info("Por favor, selecciona un tipo de diagnóstico del menú desplegable para ver las recomendaciones.")
 
-# Mostrar el análisis seleccionado (¡Lógica Actualizada!)
+# Mostrar el análisis seleccionado
 if analysis_option == "Exploración de Datos":
     show_basic_info()
     exploratory_analysis()
@@ -389,9 +397,8 @@ elif analysis_option == "Visualización Avanzada":
 elif analysis_option == "Recomendaciones":
     recommendations()
 
-# Notas al pie (¡Corregidas!)
+# Notas al pie
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Notas:**")
 st.sidebar.markdown("- Los datos han sido limpiados automáticamente para eliminar valores extremos")
-st.sidebar.markdown("- Para análisis estadísticos, p < 0.05 se considera significativo") # ¡Aquí es donde estaba el error!
-
+st.sidebar.markdown("- Para análisis estadísticos, p < 0.05 se considera significativo")
