@@ -45,7 +45,7 @@ st.title('Análisis de Datos de Clasificación de Tipos de Anemia')
 st.sidebar.title("Opciones de Análisis")
 analysis_option = st.sidebar.selectbox(
     "Seleccione el tipo de análisis:",
-    ["Exploración de Datos", "Análisis Estadístico", "Modelado Predictivo", "Visualización Avanzada"]
+    ["Exploración de Datos", "Análisis Estadístico", "Modelado Predictivo", "Visualización Avanzada", "Recomendaciones"] # NUEVA OPCIÓN
 )
 
 # Función para mostrar información básica del dataset
@@ -100,7 +100,7 @@ def exploratory_analysis():
         
         # Boxplots por diagnóstico
         st.write("### Boxplots por Diagnóstico")
-        selected_var_boxplot = st.selectbox("Seleccione variable para boxplot:", selected_vars, key='boxplot_var') # Added key
+        selected_var_boxplot = st.selectbox("Seleccione variable para boxplot:", selected_vars, key='boxplot_var') 
         fig = px.box(data, x='Diagnosis', y=selected_var_boxplot, 
                      title=f'Distribución de {selected_var_boxplot} por Diagnóstico')
         st.plotly_chart(fig, use_container_width=True)
@@ -126,26 +126,27 @@ def statistical_analysis():
     
     # Selección de variable para análisis
     numeric_cols = data.select_dtypes(include=[np.number]).columns
-    selected_var_stat = st.selectbox("Seleccione variable para análisis:", numeric_cols[:-1], key='stat_var') # Added key
+    selected_var_stat = st.selectbox("Seleccione variable para análisis:", numeric_cols[:-1], key='stat_var') 
     
-    # Nuevas adiciones: Estadísticas Descriptivas por Diagnóstico
+    # **********************************************
+    # NUEVAS ADICIONES: Estadísticas Descriptivas por Diagnóstico
     st.write("### Estadísticas Descriptivas por Diagnóstico")
     if selected_var_stat:
         desc_stats = data.groupby('Diagnosis')[selected_var_stat].describe()
         st.write(desc_stats)
 
-    # Nuevas adiciones: Violin Plots
+    # NUEVAS ADICIONES: Violin Plots
     st.write("### Violin Plots por Diagnóstico")
     if selected_var_stat:
-        fig_violin = px.violin(data, x='Diagnosis', y=selected_var_stat, color='Diagnosis', box=True, # Muestra el boxplot dentro
+        fig_violin = px.violin(data, x='Diagnosis', y=selected_var_stat, color='Diagnosis', box=True, 
                                labels={'x': 'Diagnóstico', 'y': f'Valor de {selected_var_stat}'},
                                title=f'Distribución de {selected_var_stat} por Tipo de Anemia (Violin Plot)')
         st.plotly_chart(fig_violin, use_container_width=True)
-
+    # **********************************************
 
     # Análisis ANOVA
     st.write("### Análisis de Varianza (ANOVA)")
-    groups = [data[data['Diagnosis'] == diagnosis][selected_var_stat] # Changed to selected_var_stat
+    groups = [data[data['Diagnosis'] == diagnosis][selected_var_stat] 
               for diagnosis in data['Diagnosis'].unique()]
     
     f_val, p_val = stats.f_oneway(*groups)
@@ -157,7 +158,7 @@ def statistical_analysis():
         
         # Post-hoc test (Tukey HSD)
         st.write("### Prueba Post-Hoc (Tukey HSD)")
-        tukey = pairwise_tukeyhsd(endog=data[selected_var_stat], # Changed to selected_var_stat
+        tukey = pairwise_tukeyhsd(endog=data[selected_var_stat], 
                                  groups=data['Diagnosis'],
                                  alpha=0.05)
         st.text(tukey.summary())
@@ -171,12 +172,12 @@ def statistical_analysis():
         [(a, b) for i, a in enumerate(data['Diagnosis'].unique()) 
          for b in list(data['Diagnosis'].unique())[i+1:]],
         format_func=lambda x: f"{x[0]} vs {x[1]}",
-        key='ttest_pairs' # Added key
+        key='ttest_pairs' 
     )
     
     for pair in diagnosis_pairs:
-        group1 = data[data['Diagnosis'] == pair[0]][selected_var_stat] # Changed to selected_var_stat
-        group2 = data[data['Diagnosis'] == pair[1]][selected_var_stat] # Changed to selected_var_stat
+        group1 = data[data['Diagnosis'] == pair[0]][selected_var_stat] 
+        group2 = data[data['Diagnosis'] == pair[1]][selected_var_stat] 
         
         t_val, p_val = stats.ttest_ind(group1, group2, equal_var=False)
         
@@ -278,7 +279,7 @@ def advanced_visualization():
         features,
         default=['HGB', 'RBC', 'MCV', 'MCH'],
         max_selections=5,
-        key='pairplot_vars' # Added key
+        key='pairplot_vars' 
     )
     
     if selected_vars:
@@ -298,6 +299,75 @@ def advanced_visualization():
                    aspect="auto")
     st.plotly_chart(fig, use_container_width=True)
 
+# **********************************************
+# NUEVA FUNCIÓN: Recomendaciones
+def recommendations():
+    st.subheader("Recomendaciones Basadas en el Diagnóstico")
+    st.write("Seleccione un tipo de anemia para ver las recomendaciones generales asociadas.")
+
+    # Obtener los nombres de los diagnósticos únicos del dataset
+    diagnosis_types = sorted(data['Diagnosis'].unique().tolist())
+    
+    selected_diagnosis = st.selectbox(
+        "Seleccione un diagnóstico:",
+        ['Seleccione uno...'] + diagnosis_types, # Añadir una opción inicial
+        key='recommendation_diagnosis_selector'
+    )
+
+    # Diccionario de recomendaciones (¡ESTO DEBES PERSONALIZARLO CON INFORMACIÓN MÉDICA PRECISA!)
+    # Estos son solo EJEMPLOS GENERALES
+    all_recommendations = {
+        'Anemia por deficiencia de hierro': """
+        **Recomendaciones:**
+        - **Consulta médica:** Es fundamental consultar a un médico para confirmar el diagnóstico y determinar la causa subyacente.
+        - **Dieta:** Aumentar el consumo de alimentos ricos en hierro (carnes rojas, legumbres, espinacas, lentejas, cereales fortificados).
+        - **Vitamina C:** Consumir alimentos ricos en Vitamina C (cítricos, brócoli) junto con las comidas ricas en hierro, ya que mejora su absorción.
+        - **Suplementos:** Si es necesario, el médico podría recetar suplementos de hierro. No te automediques.
+        - **Evitar inhibidores:** Limitar el consumo de té, café y calcio en las comidas ricas en hierro, ya que pueden inhibir su absorción.
+        """,
+        'Anemia por enfermedad crónica': """
+        **Recomendaciones:**
+        - **Control de la enfermedad:** La prioridad es el manejo y tratamiento de la enfermedad crónica subyacente (ej. enfermedad renal, inflamatoria, cáncer).
+        - **Consulta médica:** Sigue las indicaciones de tu especialista.
+        - **Nutrición:** Mantener una dieta equilibrada.
+        - **Tratamientos específicos:** El médico podría considerar tratamientos como eritropoyetina o suplementos, según el caso.
+        """,
+        'Anemia aplásica': """
+        **Recomendaciones:**
+        - **Urgencia médica:** Requiere atención médica inmediata y seguimiento por un hematólogo.
+        - **Evitar infecciones:** Es crucial prevenir infecciones debido al bajo recuento de glóbulos blancos.
+        - **Tratamientos:** Puede incluir inmunosupresores, transfusiones de sangre o trasplante de médula ósea.
+        - **Entorno:** Mantener un ambiente lo más estéril posible y evitar el contacto con personas enfermas.
+        """,
+        'Anemia megaloblástica': """
+        **Recomendaciones:**
+        - **Consulta médica:** Confirmar el diagnóstico (deficiencia de B12 o folato).
+        - **Suplementos:** El médico prescribirá suplementos de vitamina B12 (inyecciones si la absorción es un problema) o ácido fólico.
+        - **Dieta:** Incluir alimentos ricos en vitamina B12 (carnes, pescado, lácteos) y folato (vegetales de hoja verde, legumbres, cítricos).
+        - **Causas subyacentes:** Investigar y tratar problemas de absorción o enfermedades que la causen.
+        """,
+        'Anemia hemolítica': """
+        **Recomendaciones:**
+        - **Consulta especializada:** Requiere evaluación por un hematólogo.
+        - **Tratamiento de la causa:** El manejo dependerá de la causa subyacente (autoinmune, genética, medicamentos).
+        - **Medicamentos:** Pueden incluir corticosteroides o inmunosupresores.
+        - **Transfusiones:** Podrían ser necesarias en casos severos.
+        - **Evitar desencadenantes:** Si es causada por medicamentos o exposiciones, identificarlas y evitarlas.
+        """
+        # Puedes añadir más diagnósticos y sus recomendaciones aquí
+    }
+
+    if selected_diagnosis != 'Seleccione uno...':
+        if selected_diagnosis in all_recommendations:
+            st.markdown(all_recommendations[selected_diagnosis])
+        else:
+            st.warning(f"No hay recomendaciones específicas disponibles para '{selected_diagnosis}' en este momento. Por favor, consulta a un profesional de la salud.")
+    else:
+        st.info("Por favor, selecciona un tipo de diagnóstico del menú desplegable para ver las recomendaciones.")
+
+# **********************************************
+
+
 # Mostrar el análisis seleccionado
 if analysis_option == "Exploración de Datos":
     show_basic_info()
@@ -308,13 +378,14 @@ elif analysis_option == "Modelado Predictivo":
     predictive_modeling()
 elif analysis_option == "Visualización Avanzada":
     advanced_visualization()
+elif analysis_option == "Recomendaciones": # NUEVA CONDICIÓN
+    recommendations() # LLAMADA A LA NUEVA FUNCIÓN
 
 # Notas al pie
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Notas:**")
 st.sidebar.markdown("- Los datos han sido limpiados automáticamente para eliminar valores extremos")
 st.sidebar.markdown("- Para análisis estadísticos, p < 0.05 se considera significativo")
-
 
 
 
