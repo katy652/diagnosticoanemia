@@ -20,8 +20,12 @@ st.set_page_config(page_title="Análisis de Anemias", layout="wide")
 @st.cache_data
 def load_data():
     # Cargar los datos
-    # AHORA ESTÁ ASUMIENDO QUE 'diagnostico.csv' ESTÁ EN EL MISMO DIRECTORIO DEL REPOSITORIO
-    data = pd.read_csv("diagnostico.csv")
+    # ¡IMPORTANTE!: Asume que 'diagnostico.csv' está en la raíz de tu repositorio de GitHub
+    try:
+        data = pd.read_csv("diagnostico.csv")
+    except FileNotFoundError:
+        st.error("Error: 'diagnostico.csv' no encontrado. Asegúrate de que esté en la raíz de tu repositorio de GitHub.")
+        st.stop() # Detiene la ejecución de la aplicación si el archivo no se encuentra
     
     # Limpieza básica de datos
     # Eliminar filas con valores extremadamente anómalos (como NEUTp=5317)
@@ -46,7 +50,8 @@ st.title('Análisis de Datos de Clasificación de Tipos de Anemia')
 st.sidebar.title("Opciones de Análisis")
 analysis_option = st.sidebar.selectbox(
     "Seleccione el tipo de análisis:",
-    ["Exploración de Datos", "Análisis Estadístico", "Modelado Predictivo", "Visualización Avanzada", "Recomendaciones"] # AÑADIDO "Recomendaciones"
+    ["Exploración de Datos", "Análisis Estadístico", "Modelado Predictivo", "Visualización Avanzada", "Recomendaciones"],
+    key='main_analysis_selector'
 )
 
 # Función para mostrar información básica del dataset
@@ -85,7 +90,8 @@ def exploratory_analysis():
     selected_vars = st.multiselect(
         "Seleccione variables para visualizar:",
         data.columns[:-2],  # Excluyendo Diagnosis y Diagnosis_encoded
-        default=['HGB', 'RBC', 'MCV', 'MCH']
+        default=['HGB', 'RBC', 'MCV', 'MCH'],
+        key='exploratory_vars_multiselect'
     )
     
     if selected_vars:
@@ -101,7 +107,7 @@ def exploratory_analysis():
         
         # Boxplots por diagnóstico
         st.write("### Boxplots por Diagnóstico")
-        selected_var_boxplot = st.selectbox("Seleccione variable para boxplot:", selected_vars, key='boxplot_var') 
+        selected_var_boxplot = st.selectbox("Seleccione variable para boxplot:", selected_vars, key='boxplot_var_selector')
         fig = px.box(data, x='Diagnosis', y=selected_var_boxplot, 
                      title=f'Distribución de {selected_var_boxplot} por Diagnóstico')
         st.plotly_chart(fig, use_container_width=True)
@@ -127,7 +133,7 @@ def statistical_analysis():
     
     # Selección de variable para análisis
     numeric_cols = data.select_dtypes(include=[np.number]).columns
-    selected_var_stat = st.selectbox("Seleccione variable para análisis:", numeric_cols[:-1], key='stat_var') 
+    selected_var_stat = st.selectbox("Seleccione variable para análisis:", numeric_cols[:-1], key='stat_var_selector')
     
     # Estadísticas Descriptivas por Diagnóstico
     st.write("### Estadísticas Descriptivas por Diagnóstico")
@@ -171,7 +177,7 @@ def statistical_analysis():
         [(a, b) for i, a in enumerate(data['Diagnosis'].unique()) 
          for b in list(data['Diagnosis'].unique())[i+1:]],
         format_func=lambda x: f"{x[0]} vs {x[1]}",
-        key='ttest_pairs' 
+        key='ttest_pairs_multiselect'
     )
     
     for pair in diagnosis_pairs:
@@ -196,7 +202,7 @@ def predictive_modeling():
     y = data['Diagnosis_encoded']
     
     # División de datos
-    test_size = st.slider("Tamaño del conjunto de prueba:", 0.1, 0.4, 0.2, 0.05)
+    test_size = st.slider("Tamaño del conjunto de prueba:", 0.1, 0.4, 0.2, 0.05, key='test_size_slider')
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
     
     # Escalado de características
@@ -278,7 +284,7 @@ def advanced_visualization():
         features,
         default=['HGB', 'RBC', 'MCV', 'MCH'],
         max_selections=5,
-        key='pairplot_vars' 
+        key='pairplot_vars_multiselect'
     )
     
     if selected_vars:
@@ -298,7 +304,7 @@ def advanced_visualization():
                    aspect="auto")
     st.plotly_chart(fig, use_container_width=True)
 
-# NUEVA FUNCIÓN: Recomendaciones
+# FUNCIÓN: Recomendaciones
 def recommendations():
     st.subheader("Recomendaciones Basadas en el Diagnóstico")
     st.write("Seleccione un tipo de anemia para ver las recomendaciones generales asociadas.")
@@ -313,7 +319,6 @@ def recommendations():
     )
 
     # Diccionario de recomendaciones (¡ESTO DEBES PERSONALIZARLO CON INFORMACIÓN MÉDICA PRECISA!)
-    # Estos son solo EJEMPLOS GENERALES
     all_recommendations = {
         'Anemia por deficiencia de hierro': """
         **Recomendaciones:**
@@ -359,7 +364,8 @@ def recommendations():
         - **Tratamiento de la causa subyacente:** El tratamiento se centrará en la condición que está causando la anemia.
         - **Manejo de síntomas:** El médico puede sugerir tratamientos para aliviar síntomas como fatiga.
         """
-        # Asegúrate de que los nombres de los diagnósticos aquí coincidan EXACTAMENTE con los de tu columna 'Diagnosis'
+        # Asegúrate de que los nombres de los diagnósticos aquí coincidan EXACTAMENTE con los valores de tu columna 'Diagnosis' en el CSV.
+        # Por favor, valida y personaliza estas recomendaciones con información médica precisa.
     }
 
     if selected_diagnosis != 'Seleccione uno...':
@@ -370,7 +376,7 @@ def recommendations():
     else:
         st.info("Por favor, selecciona un tipo de diagnóstico del menú desplegable para ver las recomendaciones.")
 
-# Mostrar el análisis seleccionado
+# Mostrar el análisis seleccionado (¡Lógica Actualizada!)
 if analysis_option == "Exploración de Datos":
     show_basic_info()
     exploratory_analysis()
@@ -380,14 +386,12 @@ elif analysis_option == "Modelado Predictivo":
     predictive_modeling()
 elif analysis_option == "Visualización Avanzada":
     advanced_visualization()
-elif analysis_option == "Recomendaciones": # AÑADIDA NUEVA CONDICIÓN
-    recommendations() # LLAMADA A LA NUEVA FUNCIÓN
+elif analysis_option == "Recomendaciones":
+    recommendations()
 
-# Notas al pie
+# Notas al pie (¡Corregidas!)
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Notas:**")
 st.sidebar.markdown("- Los datos han sido limpiados automáticamente para eliminar valores extremos")
-st.sidebar.markdown("- Para análisis estadísticos, p < 0.05 se considera significativo")
-
-
+st.sidebar.markdown("- Para análisis estadísticos, p < 0.05 se considera significativo") # ¡Aquí es donde estaba el error!
 
