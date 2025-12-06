@@ -14,9 +14,36 @@ import plotly.express as px
 import plotly.graph_objects as go
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import datetime
+from supabase import create_client, Client
+import os
 
 # Configuración de la página de Streamlit
 st.set_page_config(page_title="Sistema de Salud Integral", layout="wide")
+
+# ============================================
+# CONFIGURACIÓN DE SUPABASE CON TUS CREDENCIALES
+# ============================================
+
+# TUS CREDENCIALES DE SUPABASE
+SUPABASE_URL = "https://kwsuszkblbejvliniggd.supabase.co"
+SUPABASE_KEY = "sb_publishable_DpWyb9LfXqiZBlmuSWfgIw_O2-LDm2b"
+
+# Inicializar cliente de Supabase
+@st.cache_resource
+def init_supabase():
+    try:
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        
+        # Probar la conexión
+        test_response = supabase_client.table('alertas_hemoglobina').select("*").limit(1).execute()
+        st.sidebar.success("✅ Conectado a Supabase")
+        return supabase_client
+    except Exception as e:
+        st.sidebar.error(f"❌ Error de conexión a Supabase: {str(e)[:100]}")
+        return None
+
+# Inicializar Supabase
+supabase = init_supabase()
 
 # ============================================
 # NUEVA SECCIÓN: ESTADO NUTRICIONAL Y PROGRAMAS
@@ -208,7 +235,191 @@ def show_nutritional_status():
         
         if st.button("📝 Continuar con el seguimiento", type="primary", use_container_width=True):
             st.info(f"🚀 Continuando con el seguimiento para el programa: **{selected}**")
-            # Aquí podrías redirigir a otra página o mostrar un formulario
+
+# ============================================
+# FUNCIÓN CORREGIDA: REGISTRO DE ALERTAS DE HEMOGLOBINA
+# ============================================
+
+def registrar_alerta_hemoglobina():
+    """Función CORREGIDA para registrar alertas de hemoglobina en Supabase"""
+    
+    st.header("🔴 Registro de Alertas de Hemoglobina (CORREGIDO)")
+    
+    # Verificar conexión a Supabase
+    if supabase is None:
+        st.error("❌ No hay conexión a Supabase. Verificando credenciales...")
+        
+        # Mostrar credenciales (solo para debug)
+        with st.expander("🔧 Verificar configuración"):
+            st.write(f"URL: {SUPABASE_URL}")
+            st.write(f"Key: {SUPABASE_KEY[:20]}...")
+        
+        return
+    
+    st.success("✅ Conectado a Supabase correctamente")
+    
+    # Formulario para ingresar datos
+    with st.form("form_alerta_hemoglobina_corregido"):
+        st.subheader("📝 Ingresar Datos del Paciente")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            dni = st.text_input("DNI del paciente*", max_chars=8, help="8 dígitos")
+            nombre_completo = st.text_input("Nombre completo del paciente*")
+            hemoglobina = st.number_input("Nivel de Hemoglobina (g/dL)*", 
+                                         min_value=5.0, max_value=20.0, 
+                                         value=12.0, step=0.1,
+                                         help="Valor entre 5.0 y 20.0 g/dL")
+        
+        with col2:
+            edad = st.number_input("Edad (años)*", min_value=0, max_value=100, value=30)
+            sexo = st.selectbox("Sexo*", ["Femenino", "Masculino"])
+            region = st.selectbox("Región*", 
+                                 ["LIMA", "AMAZONAS", "CUSCO", "AREQUIPA", 
+                                  "LA LIBERTAD", "PIURA", "JUNIN", "OTRA"])
+            peso = st.number_input("Peso (kg, opcional)", min_value=0.0, max_value=200.0, 
+                                  value=None, placeholder="Opcional")
+        
+        # Determinar nivel de riesgo basado en hemoglobina
+        if hemoglobina < 8:
+            riesgo = "ALTO RIESGO (Alerta Clínica - ALTA)"
+            sugerencias = "ACCION PRIORITARIA: Derivación inmediata a especialista y suplementación urgente"
+        elif hemoglobina < 10:
+            riesgo = "ALTO RIESGO (Alerta Clínica - MODERADA)"
+            sugerencias = "Suplemento de hierro y control mensual. Evaluar causas secundarias"
+        elif hemoglobina < 12:
+            riesgo = "RIESGO MODERADO"
+            sugerencias = "Dieta rica en hierro y evaluación médica en 2 semanas"
+        elif hemoglobina < 13:
+            riesgo = "BAJO RIESGO"
+            sugerencias = "PREVENCIÓN: Mantener alimentación balanceada y control anual"
+        else:
+            riesgo = "NORMAL"
+            sugerencias = "Valores normales. Mantener hábitos saludables"
+        
+        # Mostrar previsualización
+        st.markdown("---")
+        st.subheader("📊 Previsualización de la Alerta")
+        
+        col_pre1, col_pre2 = st.columns(2)
+        with col_pre1:
+            st.info(f"**Nivel de riesgo:** {riesgo}")
+            st.info(f"**Sugerencias:** {sugerencias}")
+        
+        with col_pre2:
+            st.info(f"**Región:** {region}")
+            if peso:
+                st.info(f"**Peso:** {peso} kg")
+        
+        # Información importante sobre columnas
+        with st.expander("ℹ️ Información sobre columnas de la tabla"):
+            st.warning("""
+            **IMPORTANTE:** Usando las columnas CORRECTAS de tu tabla `alertas_hemoglobina`:
+            
+            ✅ **Columnas que SÍ existen:**
+            - `DNI` (texto)
+            - `nombre_apellide` (texto - tiene typo)
+            - `riesgo` (texto)
+            - `fecha_alerta` (fecha)
+            - `sugerencias` (texto)
+            - `regién` (texto - tiene typo)
+            - `peso...` (numérico, opcional)
+            
+            ❌ **NO usar:** `interpretacion_hematologica` (no existe)
+            """)
+        
+        # Botón para enviar
+        submitted = st.form_submit_button("💾 Guardar Alerta en Supabase")
+        
+        if submitted:
+            if not dni or not nombre_completo:
+                st.warning("⚠️ Por favor, complete los campos obligatorios (*)")
+                return
+            
+            try:
+                # Fecha actual en formato correcto
+                fecha_actual = datetime.datetime.now().strftime("%Y-%m-%d")
+                
+                # PREPARAR DATOS CON LAS COLUMNAS CORRECTAS
+                datos_para_insertar = {
+                    'DNI': dni,
+                    'nombre_apellide': nombre_completo,  # COLUMNA CORRECTA (con typo)
+                    'riesgo': riesgo,
+                    'fecha_alerta': fecha_actual,
+                    'sugerencias': sugerencias,
+                    'regién': region  # COLUMNA CORRECTA (con typo)
+                }
+                
+                # Agregar peso si está presente
+                if peso is not None:
+                    datos_para_insertar['peso...'] = float(peso)
+                
+                # Mostrar datos que se enviarán
+                with st.expander("🔍 Ver datos a enviar"):
+                    st.json(datos_para_insertar)
+                    st.write("**Columnas usadas:**", list(datos_para_insertar.keys()))
+                
+                # Insertar en Supabase
+                st.info("🔄 Insertando datos en Supabase...")
+                
+                response = supabase.table('alertas_hemoglobina').insert(datos_para_insertar).execute()
+                
+                if response.data:
+                    st.success(f"✅ ¡Alerta guardada correctamente para {nombre_completo}!")
+                    st.balloons()
+                    
+                    # Mostrar confirmación
+                    col_success1, col_success2 = st.columns(2)
+                    with col_success1:
+                        st.metric("DNI", dni)
+                        st.metric("Riesgo", riesgo)
+                    
+                    with col_success2:
+                        st.metric("Hemoglobina", f"{hemoglobina} g/dL")
+                        st.metric("Fecha", fecha_actual)
+                    
+                else:
+                    st.error("❌ No se recibió respuesta de Supabase")
+                    
+            except Exception as e:
+                error_msg = str(e)
+                st.error(f"❌ Error al guardar en Supabase: {error_msg}")
+                
+                # Análisis detallado del error
+                with st.expander("🔧 Análisis detallado del error"):
+                    st.write("**Error completo:**", error_msg)
+                    
+                    if "interpretacion_hematologica" in error_msg:
+                        st.error("""
+                        ❌ **ERROR DETECTADO:**
+                        
+                        Estás intentando usar la columna `interpretacion_hematologica` que NO existe en tu tabla.
+                        
+                        **SOLUCIÓN:**
+                        1. Revisa TODO tu código
+                        2. Busca donde dice `interpretacion_hematologica`
+                        3. Cámbialo por una columna que SÍ exista
+                        
+                        **Tus columnas existentes son:**
+                        - DNI
+                        - nombre_apellide
+                        - riesgo
+                        - fecha_alerta
+                        - sugerencias
+                        - regién
+                        - peso...
+                        """)
+                    
+                    # Sugerencia para verificar la tabla
+                    st.info("""
+                    **Para verificar tu tabla en Supabase:**
+                    1. Ve a https://kwsuszkblbejvliniggd.supabase.co
+                    2. Inicia sesión
+                    3. Ve a "Table Editor"
+                    4. Selecciona la tabla `alertas_hemoglobina`
+                    5. Verifica los nombres exactos de las columnas
+                    """)
 
 # ============================================
 # FUNCIONES ORIGINALES DEL ANÁLISIS DE ANEMIAS
@@ -217,22 +428,18 @@ def show_nutritional_status():
 @st.cache_data
 def load_data():
     # Cargar los datos
-    # ¡IMPORTANTE!: Asume que 'diagnostico.csv' está en la raíz de tu repositorio de GitHub
     try:
         data = pd.read_csv("diagnostico.csv")
     except FileNotFoundError:
         st.error("Error: 'diagnostico.csv' no encontrado. Asegúrate de que esté en la raíz de tu repositorio de GitHub.")
-        st.stop() # Detiene la ejecución de la aplicación si el archivo no se encuentra
+        st.stop()
     
     # Limpieza básica de datos
-    # Eliminar filas con valores extremadamente anómalos (como NEUTp=5317)
     data = data[data['NEUTp'] < 100]
     
-    # Eliminar filas con valores negativos donde no deberían existir
     for col in ['HGB', 'RBC', 'HCT']:
         data = data[data[col] > 0]
     
-    # Codificar la variable objetivo
     le = LabelEncoder()
     data['Diagnosis_encoded'] = le.fit_transform(data['Diagnosis'])
     
@@ -253,7 +460,7 @@ def show_basic_info():
         st.write(data.describe())
     
     st.write(f"**Número total de muestras:** {len(data)}")
-    st.write(f"**Número de características:** {len(data.columns) - 1}")  # Excluyendo Diagnosis
+    st.write(f"**Número de características:** {len(data.columns) - 1}")
     
     st.write("**Distribución de diagnósticos:**")
     diagnosis_counts = data['Diagnosis'].value_counts()
@@ -270,16 +477,14 @@ def show_basic_info():
 def exploratory_analysis():
     st.subheader("Análisis Exploratorio de Datos")
     
-    # Selección de variables para visualización
     selected_vars = st.multiselect(
         "Seleccione variables para visualizar:",
-        data.columns[:-2],  # Excluyendo Diagnosis y Diagnosis_encoded
+        data.columns[:-2],
         default=['HGB', 'RBC', 'MCV', 'MCH'],
         key='exploratory_vars_multiselect'
     )
     
     if selected_vars:
-        # Histogramas
         st.write("### Distribución de Variables")
         cols = st.columns(2)
         for i, var in enumerate(selected_vars):
@@ -289,14 +494,12 @@ def exploratory_analysis():
                                   marginal="box")
                 st.plotly_chart(fig, use_container_width=True)
         
-        # Boxplots por diagnóstico
         st.write("### Boxplots por Diagnóstico")
         selected_var_boxplot = st.selectbox("Seleccione variable para boxplot:", selected_vars, key='boxplot_var_selector')
         fig = px.box(data, x='Diagnosis', y=selected_var_boxplot, 
                      title=f'Distribución de {selected_var_boxplot} por Diagnóstico')
         st.plotly_chart(fig, use_container_width=True)
     
-    # Matriz de correlación
     st.write("### Matriz de Correlación")
     numeric_cols = data.select_dtypes(include=[np.number]).columns
     corr_matrix = data[numeric_cols].corr()
@@ -315,17 +518,14 @@ def exploratory_analysis():
 def statistical_analysis():
     st.subheader("Análisis Estadístico")
     
-    # Selección de variable para análisis
     numeric_cols = data.select_dtypes(include=[np.number]).columns
     selected_var_stat = st.selectbox("Seleccione variable para análisis:", numeric_cols[:-1], key='stat_var_selector')
     
-    # Estadísticas Descriptivas por Diagnóstico
     st.write("### Estadísticas Descriptivas por Diagnóstico")
     if selected_var_stat:
         desc_stats = data.groupby('Diagnosis')[selected_var_stat].describe()
         st.write(desc_stats)
 
-    # Violin Plots
     st.write("### Violin Plots por Diagnóstico")
     if selected_var_stat:
         fig_violin = px.violin(data, x='Diagnosis', y=selected_var_stat, color='Diagnosis', box=True, 
@@ -333,7 +533,6 @@ def statistical_analysis():
                                title=f'Distribución de {selected_var_stat} por Tipo de Anemia (Violin Plot)')
         st.plotly_chart(fig_violin, use_container_width=True)
 
-    # Análisis ANOVA
     st.write("### Análisis de Varianza (ANOVA)")
     groups = [data[data['Diagnosis'] == diagnosis][selected_var_stat] 
               for diagnosis in data['Diagnosis'].unique()]
@@ -345,7 +544,6 @@ def statistical_analysis():
     if p_val < 0.05:
         st.success("Hay diferencias significativas entre los grupos (p < 0.05)")
         
-        # Post-hoc test (Tukey HSD)
         st.write("### Prueba Post-Hoc (Tukey HSD)")
         tukey = pairwise_tukeyhsd(endog=data[selected_var_stat], 
                                  groups=data['Diagnosis'],
@@ -354,7 +552,6 @@ def statistical_analysis():
     else:
         st.warning("No hay diferencias significativas entre los grupos (p = 0.05)")
     
-    # Comparación de pares de diagnósticos con t-test
     st.write("### Comparación entre Pares de Diagnósticos (t-test)")
     diagnosis_pairs = st.multiselect(
         "Seleccione pares de diagnósticos para comparar:",
@@ -380,31 +577,25 @@ def statistical_analysis():
 def predictive_modeling():
     st.subheader("Modelado Predictivo")
     
-    # Selección de características y objetivo
     features = data.select_dtypes(include=[np.number]).columns.drop(['Diagnosis_encoded'])
     X = data[features]
     y = data['Diagnosis_encoded']
     
-    # División de datos
     test_size = st.slider("Tamaño del conjunto de prueba:", 0.1, 0.4, 0.2, 0.05, key='test_size_slider')
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
     
-    # Escalado de características
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
     
-    # Entrenamiento del modelo
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train_scaled, y_train)
     
-    # Evaluación del modelo
     y_pred = model.predict(X_test_scaled)
     accuracy = accuracy_score(y_test, y_pred)
     
     st.write(f"**Precisión del modelo:** {accuracy:.2f}")
     
-    # Matriz de confusión
     st.write("### Matriz de Confusión")
     cm = confusion_matrix(y_test, y_pred)
     fig = px.imshow(cm,
@@ -414,12 +605,10 @@ def predictive_modeling():
                    text_auto=True)
     st.plotly_chart(fig, use_container_width=True)
     
-    # Reporte de clasificación
     st.write("### Reporte de Clasificación")
     report = classification_report(y_test, y_pred, target_names=label_encoder.classes_)
     st.text(report)
     
-    # Importancia de características
     st.write("### Importancia de Características")
     feature_importance = pd.DataFrame({
         'Feature': features,
@@ -437,31 +626,25 @@ def predictive_modeling():
 def advanced_visualization():
     st.subheader("Visualización Avanzada")
     
-    # PCA para reducción de dimensionalidad
     st.write("### Análisis de Componentes Principales (PCA)")
     
-    # Selección de características
     features = data.select_dtypes(include=[np.number]).columns.drop(['Diagnosis_encoded'])
     X = data[features]
     y = data['Diagnosis']
     
-    # Escalado
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     
-    # Aplicar PCA
     pca = PCA(n_components=2)
     principal_components = pca.fit_transform(X_scaled)
     pca_df = pd.DataFrame(data=principal_components, 
                           columns=['PC1', 'PC2'])
     pca_df['Diagnosis'] = y
     
-    # Visualización PCA
     fig = px.scatter(pca_df, x='PC1', y='PC2', color='Diagnosis',
                      title='PCA: Visualización 2D de los Datos')
     st.plotly_chart(fig, use_container_width=True)
     
-    # Gráfico de pares
     st.write("### Gráfico de Pares (Pair Plot)")
     selected_vars = st.multiselect(
         "Seleccione hasta 5 variables para pair plot:",
@@ -478,7 +661,6 @@ def advanced_visualization():
                                title='Gráfico de Pares por Diagnóstico')
         st.plotly_chart(fig, use_container_width=True)
     
-    # Heatmap por diagnóstico
     st.write("### Heatmap de Medias por Diagnóstico")
     mean_by_diagnosis = data.groupby('Diagnosis')[features].mean()
     fig = px.imshow(mean_by_diagnosis,
@@ -493,7 +675,6 @@ def recommendations():
     st.subheader("Recomendaciones Basadas en el Diagnóstico")
     st.write("Seleccione un tipo de anemia para ver las recomendaciones generales asociadas.")
 
-    # Obtener los nombres de los diagnósticos únicos del dataset
     diagnosis_types = sorted(data['Diagnosis'].unique().tolist())
     st.write(f"**Diagnósticos disponibles:** {diagnosis_types}")
     
@@ -503,7 +684,6 @@ def recommendations():
         key='recommendation_diagnosis_selector'
     )
 
-    # Diccionario de recomendaciones (¡ESTO DEBES PERSONALIZARLO CON INFORMACIÓN MÉDICA PRECISA!)
     all_recommendations = {
         'Anemia por deficiencia de hierro': """
         **Recomendaciones:**
@@ -551,13 +731,13 @@ def recommendations():
         """,
         'Leukemia': """
         **Recomendaciones (Leucemia):**
-        - **Urgencia Médica y Especialista:** El diagnóstico de leucemia requiere atención médica URGENTE y especializada por un hematólogo oncólogo. No es algo que deba manejarse con recomendaciones generales de dieta o estilo de vida sin supervisión médica intensiva.
-        - **Confirmación Diagnóstica:** Se requerirán pruebas adicionales (biopsia de médula ósea, análisis genéticos) para confirmar el tipo específico de leucemia y su estadio.
-        - **Plan de Tratamiento:** El tratamiento variará enormemente según el tipo de leucemia (aguda/crónica, mieloide/linfoide), la edad del paciente y otros factores. Puede incluir quimioterapia, radioterapia, terapia dirigida, inmunoterapia o trasplante de células madre.
-        - **Manejo de Complicaciones:** Es fundamental el manejo de las complicaciones (infecciones, hemorragias, anemia severa) que son comunes durante el tratamiento.
+        - **Urgencia Médica y Especialista:** El diagnóstico de leucemia requiere atención médica URGENTE y especializada por un hematólogo oncólogo.
+        - **Confirmación Diagnóstica:** Se requerirán pruebas adicionales (biopsia de médula ósea, análisis genéticos).
+        - **Plan de Tratamiento:** El tratamiento variará enormemente según el tipo de leucemia.
+        - **Manejo de Complicaciones:** Es fundamental el manejo de las complicaciones (infecciones, hemorragias, anemia severa).
         - **Apoyo Psicológico:** Un diagnóstico de leucemia es devastador. El apoyo psicológico para el paciente y la familia es crucial.
         - **Seguimiento Continuo:** Requiere seguimiento médico constante y de por vida.
-        **¡Advertencia Importante!** Esta aplicación NO es un sustituto del consejo médico profesional. Las recomendaciones para la leucemia son extremadamente complejas y deben ser proporcionadas ÚNICAMENTE por profesionales de la salud cualificados.
+        **¡Advertencia Importante!** Esta aplicación NO es un sustituto del consejo médico profesional.
         """
     }
 
@@ -570,25 +750,182 @@ def recommendations():
         st.info("Por favor, selecciona un tipo de diagnóstico del menú desplegable para ver las recomendaciones.")
 
 # ============================================
+# NUEVA FUNCIÓN: VER ALERTAS REGISTRADAS
+# ============================================
+
+def ver_alertas_registradas():
+    """Función para ver las alertas registradas en Supabase"""
+    
+    st.header("📋 Alertas de Hemoglobina Registradas")
+    
+    if supabase is None:
+        st.error("❌ No hay conexión a Supabase.")
+        return
+    
+    try:
+        # Obtener alertas de Supabase
+        st.info("🔄 Obteniendo datos de Supabase...")
+        response = supabase.table('alertas_hemoglobina').select("*").order('fecha_alerta', desc=True).execute()
+        
+        if response.data:
+            df_alertas = pd.DataFrame(response.data)
+            
+            st.success(f"✅ Se encontraron {len(df_alertas)} alertas registradas")
+            
+            # Mostrar tabla con opciones
+            st.subheader("📊 Tabla de Alertas")
+            
+            # Filtrar por región si hay datos
+            if 'regién' in df_alertas.columns and not df_alertas.empty:
+                regiones = sorted(df_alertas['regién'].unique())
+                region_seleccionada = st.selectbox("Filtrar por región:", ["Todas"] + list(regiones))
+                
+                if region_seleccionada != "Todas":
+                    df_alertas = df_alertas[df_alertas['regién'] == region_seleccionada]
+                    st.info(f"Mostrando {len(df_alertas)} alertas de {region_seleccionada}")
+            
+            # Mostrar tabla
+            st.dataframe(df_alertas, use_container_width=True, hide_index=True)
+            
+            # Opción para descargar
+            csv = df_alertas.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Descargar datos como CSV",
+                data=csv,
+                file_name=f"alertas_hemoglobina_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+            )
+            
+            # Estadísticas
+            st.subheader("📈 Estadísticas Generales")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                alto_riesgo = len(df_alertas[df_alertas['riesgo'].str.contains('ALTO RIESGO', na=False)]) if 'riesgo' in df_alertas.columns else 0
+                st.metric("Alertas de Alto Riesgo", alto_riesgo)
+            
+            with col2:
+                if 'regién' in df_alertas.columns and not df_alertas['regién'].empty:
+                    region_frecuente = df_alertas['regién'].mode().iloc[0] if not df_alertas['regién'].mode().empty else "N/A"
+                    st.metric("Región más frecuente", region_frecuente)
+                else:
+                    st.metric("Región más frecuente", "N/A")
+            
+            with col3:
+                if 'fecha_alerta' in df_alertas.columns and not df_alertas['fecha_alerta'].empty:
+                    ultima_fecha = df_alertas['fecha_alerta'].max()
+                    st.metric("Última alerta", ultima_fecha)
+                else:
+                    st.metric("Última alerta", "N/A")
+            
+            # Gráfico de distribución por riesgo
+            if 'riesgo' in df_alertas.columns:
+                st.subheader("📊 Distribución por Nivel de Riesgo")
+                riesgo_counts = df_alertas['riesgo'].value_counts()
+                
+                if not riesgo_counts.empty:
+                    fig = px.bar(risgo_counts, 
+                                x=risgo_counts.index, 
+                                y=risgo_counts.values,
+                                title='Distribución de Alertas por Nivel de Riesgo',
+                                labels={'x': 'Nivel de Riesgo', 'y': 'Cantidad'},
+                                color=risgo_counts.values,
+                                color_continuous_scale='RdYlGn_r')
+                    st.plotly_chart(fig, use_container_width=True)
+            
+            # Gráfico por región
+            if 'regién' in df_alertas.columns:
+                st.subheader("🗺️ Distribución por Región")
+                region_counts = df_alertas['regién'].value_counts()
+                
+                if not region_counts.empty:
+                    fig2 = px.pie(region_counts, 
+                                 names=region_counts.index, 
+                                 values=region_counts.values,
+                                 title='Distribución de Alertas por Región',
+                                 hole=0.3)
+                    st.plotly_chart(fig2, use_container_width=True)
+            
+        else:
+            st.info("📭 No hay alertas registradas en la base de datos. Usa la opción 'Registro de Alertas' para agregar la primera.")
+            
+    except Exception as e:
+        st.error(f"❌ Error al obtener alertas: {str(e)}")
+        
+        # Información de ayuda
+        with st.expander("🔧 Solucionar problemas"):
+            st.write("""
+            **Posibles soluciones:**
+            1. Verifica que la tabla `alertas_hemoglobina` exista en Supabase
+            2. Revisa los permisos de la tabla
+            3. Verifica que estés usando la clave correcta
+            4. Asegúrate de que la tabla tenga al menos una columna
+            """)
+
+# ============================================
+# FUNCIÓN PARA VERIFICAR CONEXIÓN
+# ============================================
+
+def verificar_conexion_supabase():
+    """Verifica la conexión a Supabase y muestra información"""
+    
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🔗 Estado de Conexión")
+    
+    if supabase:
+        st.sidebar.success("✅ Conectado a Supabase")
+        
+        # Probar obtener datos
+        try:
+            response = supabase.table('alertas_hemoglobina').select("*").limit(1).execute()
+            if response.data:
+                st.sidebar.info(f"📊 Tabla 'alertas_hemoglobina': {len(response.data)} registros de prueba")
+            else:
+                st.sidebar.warning("📭 La tabla está vacía o no existe")
+        except:
+            st.sidebar.warning("⚠️ Error al acceder a la tabla")
+    else:
+        st.sidebar.error("❌ Sin conexión a Supabase")
+
+# ============================================
 # MAIN APP
 # ============================================
 
 # Título principal de la aplicación
 st.title('🏥 Sistema de Salud Integral: Análisis de Anemias y Estado Nutricional')
 
-# Cargar datos (se mantiene del código original)
+# Cargar datos
 data, label_encoder = load_data()
 
 # Sidebar para navegación
-st.sidebar.title("🔍 Opciones de Navegación")
+st.sidebar.title("🔍 Navegación Principal")
+
+# Actualizar las opciones del menú
 app_mode = st.sidebar.selectbox(
     "Seleccione el módulo:",
-    ["Estado Nutricional", "Análisis de Anemias"],
+    [
+        "Estado Nutricional", 
+        "Registro de Alertas Hemoglobina",  # NUEVO - CORREGIDO
+        "Ver Alertas Registradas",          # NUEVO
+        "Análisis de Anemias"
+    ],
     key='app_mode_selector'
 )
 
-# Si selecciona "Análisis de Anemias", mostrar subopciones
-if app_mode == "Análisis de Anemias":
+# Verificar conexión
+verificar_conexion_supabase()
+
+# Mostrar el módulo seleccionado
+if app_mode == "Estado Nutricional":
+    show_nutritional_status()
+
+elif app_mode == "Registro de Alertas Hemoglobina":
+    registrar_alerta_hemoglobina()
+
+elif app_mode == "Ver Alertas Registradas":
+    ver_alertas_registradas()
+
+elif app_mode == "Análisis de Anemias":
     analysis_option = st.sidebar.selectbox(
         "Seleccione el tipo de análisis:",
         ["Exploración de Datos", "Análisis Estadístico", "Modelado Predictivo", "Visualización Avanzada", "Recomendaciones"],
@@ -608,10 +945,6 @@ if app_mode == "Análisis de Anemias":
     elif analysis_option == "Recomendaciones":
         recommendations()
 
-# Si selecciona "Estado Nutricional", mostrar esa sección
-elif app_mode == "Estado Nutricional":
-    show_nutritional_status()
-
 # Notas al pie
 st.sidebar.markdown("---")
 st.sidebar.markdown("**📋 Notas:**")
@@ -619,12 +952,19 @@ st.sidebar.markdown("- Los datos han sido limpiados automáticamente para elimin
 st.sidebar.markdown("- Para análisis estadísticos, p < 0.05 se considera significativo")
 st.sidebar.markdown("- Sistema desarrollado para uso del personal de salud")
 
+# Información de configuración
+with st.sidebar.expander("⚙️ Información de Conexión"):
+    st.write(f"**URL Supabase:** {SUPABASE_URL}")
+    st.write(f"**Clave:** {'*' * len(SUPABASE_KEY)}")
+    st.write("**Tabla:** alertas_hemoglobina")
+    st.write("**Columnas correctas:** DNI, nombre_apellide, riesgo, fecha_alerta, sugerencias, regién, peso...")
+
 # Pie de página
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666; font-size: 0.9rem; padding: 20px;">
     <p>🏥 <strong>Sistema de Salud Integral</strong> - Ministerio de Salud</p>
+    <p>✅ <strong>CONEXIÓN CORREGIDA:</strong> Usando columnas correctas de Supabase</p>
     <p>Esta información es confidencial y de uso exclusivo para el personal de salud autorizado.</p>
 </div>
 """, unsafe_allow_html=True)
-
