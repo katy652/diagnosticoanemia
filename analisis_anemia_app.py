@@ -13,9 +13,206 @@ from scipy import stats
 import plotly.express as px
 import plotly.graph_objects as go
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
+import datetime
 
 # Configuración de la página de Streamlit
-st.set_page_config(page_title="Análisis de Anemias", layout="wide")
+st.set_page_config(page_title="Sistema de Salud Integral", layout="wide")
+
+# ============================================
+# NUEVA SECCIÓN: ESTADO NUTRICIONAL Y PROGRAMAS
+# ============================================
+
+def show_nutritional_status():
+    """Muestra el estado nutricional y programas de apoyo social"""
+    
+    st.header("📋 Estado Nutricional y Programas de Apoyo Social")
+    
+    # Crear dos columnas para la sección de estado nutricional
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.subheader("Estado Nutricional del Paciente")
+        
+        # Mostrar información del estado nutricional
+        st.markdown("""
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 5px solid #2c6fbb;">
+            <h3 style="color: #1a4d8c; margin-top: 0;">Estado Nutricional: NO EVALUABLE</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;">
+                <div>
+                    <p style="margin: 0; color: #666; font-size: 0.9rem;">Peso para la Edad</p>
+                    <p style="margin: 0; font-weight: 600; color: #f57c00;">Edad sin referencia</p>
+                </div>
+                <div>
+                    <p style="margin: 0; color: #666; font-size: 0.9rem;">Talla para la Edad</p>
+                    <p style="margin: 0; font-weight: 600; color: #f57c00;">Edad sin referencia</p>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                <span style="background-color: #e8f5e9; color: #2e7d32; padding: 5px 15px; border-radius: 20px; font-weight: 600;">Seguimiento activo: SÍ</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Gráfico de indicadores nutricionales
+        st.subheader("Indicadores Antropométricos")
+        
+        # Crear datos para el gráfico
+        indicators = ['Peso/Edad', 'Talla/Edad', 'Peso/Talla', 'IMC/Edad']
+        values = [None, None, 20, None]
+        colors = ['#ff9800', '#ff9800', '#2196f3', '#9e9e9e']
+        
+        # Crear gráfico de barras
+        fig = go.Figure()
+        
+        for i, (indicator, value, color) in enumerate(zip(indicators, values, colors)):
+            fig.add_trace(go.Bar(
+                x=[indicator],
+                y=[value if value is not None else 0],
+                name=indicator,
+                marker_color=color,
+                text=[f'No evaluable' if value is None else f'{value}'],
+                textposition='auto',
+                hovertemplate=f"{indicator}<br>" + 
+                            ("No evaluable" if value is None else f"Valor: {value}<br>") +
+                            "<extra></extra>"
+            ))
+        
+        fig.update_layout(
+            title="Indicadores Nutricionales",
+            yaxis_title="Percentil",
+            yaxis_range=[0, 100],
+            showlegend=False,
+            height=300
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        st.subheader("📊 Información del Paciente")
+        
+        # Mostrar fecha actual
+        today = datetime.date.today()
+        st.info(f"**Fecha:** {today.strftime('%d/%m/%Y')}")
+        
+        # Información adicional del paciente
+        st.markdown("""
+        <div style="background-color: #f0f7ff; padding: 15px; border-radius: 10px; margin-top: 10px;">
+            <p style="margin: 0; font-weight: 600; color: #1a4d8c;">Paciente:</p>
+            <p style="margin: 5px 0 15px 0; color: #333;">[Nombre del paciente]</p>
+            
+            <p style="margin: 0; font-weight: 600; color: #1a4d8c;">Edad:</p>
+            <p style="margin: 5px 0 15px 0; color: #333;">[Edad]</p>
+            
+            <p style="margin: 0; font-weight: 600; color: #1a4d8c;">Última evaluación:</p>
+            <p style="margin: 5px 0 0 0; color: #333;">[Fecha]</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Separador
+    st.markdown("---")
+    
+    # Sección de programas de apoyo social
+    st.subheader("🏥 Programas de Apoyo Social")
+    st.write("Seleccione el programa social al que pertenece el beneficiario:")
+    
+    # Crear tres columnas para los programas
+    prog_col1, prog_col2, prog_col3 = st.columns(3)
+    
+    with prog_col1:
+        st.markdown("""
+        <div style="background-color: #fff3e0; padding: 20px; border-radius: 10px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: all 0.3s;">
+            <div style="background: linear-gradient(135deg, #ff9800, #ff5722); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
+                <span style="color: white; font-size: 24px;">🥛</span>
+            </div>
+            <h3 style="color: #e65100; margin-bottom: 10px;">Vaso de Leche</h3>
+            <p style="color: #666; font-size: 0.9rem;">Apoyo alimentario para niños, gestantes y adultos mayores</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("Seleccionar Vaso de Leche", key="vaso_leche_btn", use_container_width=True):
+            st.session_state.selected_program = "Vaso de Leche"
+            st.success("✅ Programa 'Vaso de Leche' seleccionado")
+    
+    with prog_col2:
+        st.markdown("""
+        <div style="background-color: #e3f2fd; padding: 20px; border-radius: 10px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: all 0.3s;">
+            <div style="background: linear-gradient(135deg, #2196f3, #0d47a1); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
+                <span style="color: white; font-size: 24px;">🤝</span>
+            </div>
+            <h3 style="color: #1565c0; margin-bottom: 10px;">Programa Juntos</h3>
+            <p style="color: #666; font-size: 0.9rem;">Transferencias condicionadas para familias en pobreza</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("Seleccionar Juntos", key="juntos_btn", use_container_width=True):
+            st.session_state.selected_program = "Programa Juntos"
+            st.success("✅ Programa 'Juntos' seleccionado")
+    
+    with prog_col3:
+        st.markdown("""
+        <div style="background-color: #e8f5e9; padding: 20px; border-radius: 10px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: all 0.3s;">
+            <div style="background: linear-gradient(135deg, #4caf50, #1b5e20); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
+                <span style="color: white; font-size: 24px;">🍎</span>
+            </div>
+            <h3 style="color: #2e7d32; margin-bottom: 10px;">Qali Warma</h3>
+            <p style="color: #666; font-size: 0.9rem;">Alimentación escolar para instituciones educativas públicas</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("Seleccionar Qali Warma", key="qaliwarma_btn", use_container_width=True):
+            st.session_state.selected_program = "Qali Warma"
+            st.success("✅ Programa 'Qali Warma' seleccionado")
+    
+    # Mostrar programa seleccionado
+    if 'selected_program' in st.session_state:
+        st.markdown("---")
+        st.subheader("📋 Programa Seleccionado")
+        
+        programs_info = {
+            "Vaso de Leche": {
+                "desc": "Proporciona apoyo alimentario a niños, madres gestantes y adultos mayores en situación de vulnerabilidad.",
+                "beneficiarios": "Niños 0-13 años, gestantes, adultos mayores",
+                "frecuencia": "Diaria"
+            },
+            "Programa Juntos": {
+                "desc": "Transferencias condicionadas para familias en situación de pobreza y pobreza extrema.",
+                "beneficiarios": "Familias en pobreza con niños/adolescentes",
+                "frecuencia": "Bimestral"
+            },
+            "Qali Warma": {
+                "desc": "Alimentación escolar para niños de instituciones educativas públicas.",
+                "beneficiarios": "Estudiantes de inicial y primaria",
+                "frecuencia": "Diaria (escolar)"
+            }
+        }
+        
+        selected = st.session_state.selected_program
+        info = programs_info.get(selected, {})
+        
+        st.markdown(f"""
+        <div style="background-color: #f0f7ff; padding: 20px; border-radius: 10px; border-left: 5px solid #2c6fbb;">
+            <h3 style="color: #1a4d8c; margin-top: 0;">{selected}</h3>
+            <p style="margin-bottom: 15px;"><strong>Descripción:</strong> {info.get('desc', '')}</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <p style="margin: 0; color: #666; font-size: 0.9rem;">Beneficiarios</p>
+                    <p style="margin: 0; font-weight: 600;">{info.get('beneficiarios', '')}</p>
+                </div>
+                <div>
+                    <p style="margin: 0; color: #666; font-size: 0.9rem;">Frecuencia</p>
+                    <p style="margin: 0; font-weight: 600;">{info.get('frecuencia', '')}</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("📝 Continuar con el seguimiento", type="primary", use_container_width=True):
+            st.info(f"🚀 Continuando con el seguimiento para el programa: **{selected}**")
+            # Aquí podrías redirigir a otra página o mostrar un formulario
+
+# ============================================
+# FUNCIONES ORIGINALES DEL ANÁLISIS DE ANEMIAS
+# ============================================
 
 @st.cache_data
 def load_data():
@@ -40,19 +237,6 @@ def load_data():
     data['Diagnosis_encoded'] = le.fit_transform(data['Diagnosis'])
     
     return data, le
-
-data, label_encoder = load_data()
-
-# Título de la aplicación
-st.title('Análisis de Datos de Clasificación de Tipos de Anemia')
-
-# Sidebar para navegación
-st.sidebar.title("Opciones de Análisis")
-analysis_option = st.sidebar.selectbox(
-    "Seleccione el tipo de análisis:",
-    ["Exploración de Datos", "Análisis Estadístico", "Modelado Predictivo", "Visualización Avanzada", "Recomendaciones"],
-    key='main_analysis_selector'
-)
 
 # Función para mostrar información básica del dataset
 def show_basic_info():
@@ -304,7 +488,7 @@ def advanced_visualization():
                    aspect="auto")
     st.plotly_chart(fig, use_container_width=True)
 
-# FUNCIÓN: Recomendaciones
+# Función para recomendaciones
 def recommendations():
     st.subheader("Recomendaciones Basadas en el Diagnóstico")
     st.write("Seleccione un tipo de anemia para ver las recomendaciones generales asociadas.")
@@ -331,7 +515,7 @@ def recommendations():
         """,
         'Anemia por enfermedad crónica': """
         **Recomendaciones:**
-        - **Control de la enfermedad:** La prioridad es el manejo y tratamiento de la enfermedad crónica subyacente (ej. enfermedad renal, inflamatoria, cáncer).
+        - **Control de la enfermedad:** La prioridad es el manejo y tratamiento de la enfermedad crónica subyacente.
         - **Consulta médica:** Sigue las indicaciones de tu especialista.
         - **Nutrición:** Mantener una dieta equilibrada.
         - **Tratamientos específicos:** El médico podría considerar tratamientos como eritropoyetina o suplementos, según el caso.
@@ -375,7 +559,7 @@ def recommendations():
         - **Seguimiento Continuo:** Requiere seguimiento médico constante y de por vida.
         **¡Advertencia Importante!** Esta aplicación NO es un sustituto del consejo médico profesional. Las recomendaciones para la leucemia son extremadamente complejas y deben ser proporcionadas ÚNICAMENTE por profesionales de la salud cualificados.
         """
-           }
+    }
 
     if selected_diagnosis != 'Seleccione uno...':
         if selected_diagnosis in all_recommendations:
@@ -385,21 +569,62 @@ def recommendations():
     else:
         st.info("Por favor, selecciona un tipo de diagnóstico del menú desplegable para ver las recomendaciones.")
 
-# Mostrar el análisis seleccionado
-if analysis_option == "Exploración de Datos":
-    show_basic_info()
-    exploratory_analysis()
-elif analysis_option == "Análisis Estadístico":
-    statistical_analysis()
-elif analysis_option == "Modelado Predictivo":
-    predictive_modeling()
-elif analysis_option == "Visualización Avanzada":
-    advanced_visualization()
-elif analysis_option == "Recomendaciones":
-    recommendations()
+# ============================================
+# MAIN APP
+# ============================================
+
+# Título principal de la aplicación
+st.title('🏥 Sistema de Salud Integral: Análisis de Anemias y Estado Nutricional')
+
+# Cargar datos (se mantiene del código original)
+data, label_encoder = load_data()
+
+# Sidebar para navegación
+st.sidebar.title("🔍 Opciones de Navegación")
+app_mode = st.sidebar.selectbox(
+    "Seleccione el módulo:",
+    ["Estado Nutricional", "Análisis de Anemias"],
+    key='app_mode_selector'
+)
+
+# Si selecciona "Análisis de Anemias", mostrar subopciones
+if app_mode == "Análisis de Anemias":
+    analysis_option = st.sidebar.selectbox(
+        "Seleccione el tipo de análisis:",
+        ["Exploración de Datos", "Análisis Estadístico", "Modelado Predictivo", "Visualización Avanzada", "Recomendaciones"],
+        key='main_analysis_selector'
+    )
+    
+    # Mostrar el análisis seleccionado
+    if analysis_option == "Exploración de Datos":
+        show_basic_info()
+        exploratory_analysis()
+    elif analysis_option == "Análisis Estadístico":
+        statistical_analysis()
+    elif analysis_option == "Modelado Predictivo":
+        predictive_modeling()
+    elif analysis_option == "Visualización Avanzada":
+        advanced_visualization()
+    elif analysis_option == "Recomendaciones":
+        recommendations()
+
+# Si selecciona "Estado Nutricional", mostrar esa sección
+elif app_mode == "Estado Nutricional":
+    show_nutritional_status()
 
 # Notas al pie
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Notas:**")
+st.sidebar.markdown("**📋 Notas:**")
 st.sidebar.markdown("- Los datos han sido limpiados automáticamente para eliminar valores extremos")
 st.sidebar.markdown("- Para análisis estadísticos, p < 0.05 se considera significativo")
+st.sidebar.markdown("- Sistema desarrollado para uso del personal de salud")
+
+# Pie de página
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; color: #666; font-size: 0.9rem; padding: 20px;">
+    <p>🏥 <strong>Sistema de Salud Integral</strong> - Ministerio de Salud</p>
+    <p>Esta información es confidencial y de uso exclusivo para el personal de salud autorizado.</p>
+</div>
+""", unsafe_allow_html=True)
+
